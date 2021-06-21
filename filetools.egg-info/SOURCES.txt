@@ -1,0 +1,17 @@
+README.md
+setup.py
+filetools/__init__.py
+filetools.egg-info/PKG-INFO
+filetools.egg-info/SOURCES.txt
+filetools.egg-info/dependency_links.txt
+filetools.egg-info/requires.txt
+filetools.egg-info/top_level.txt
+filetools/fits/__init__.py
+filetools/fits/read.py
+filetools/folder/__init__.py
+filetools/folder/create.py
+filetools/gadget/__init__.py
+filetools/gadget/read.py
+filetools/hdf5/__init__.py
+filetools/hdf5/read.py
+filetools/hdf5/utils.py
