@@ -50,5 +50,13 @@ while reader.current_chunk < 4:
 
 ## Functions
 
-* `folder`
-  - `folder.create_folder`: creates a folder with a specified name in a given path.
+* `fits` :
+  * `fits.ReadFITS` : Reads fits file in chunks.  
+* `folder` :
+  * `folder.create_folder`: creates a folder with a specified name in a given path.
+* `gadget` :
+  * `gadget.ReadGADGET` : Reads Gadget file in chunks.
+* `hdf5` :
+  * `hdf5.get_hdf5_data` : Reads HDF5 files.
+  * `print_hdf5_item_structure` : Prints the HDF5 file structure.
+  * `get_hdf5_keys` : Gets the HDF5 keys.

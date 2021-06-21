@@ -77,7 +77,7 @@ class ReadFITS:
         else:
             self.read_all = True
         return data
-    
+
 
     def clean(self):
         self.__init__()
