@@ -1,6 +1,8 @@
 import numpy as np
 import pygadgetreader as pyg
 
+from .. import utils
+
 
 class ReadGADGET:
 
@@ -105,7 +107,8 @@ class ReadGADGET:
             self.filezmax = dinfo[6]
 
 
-    def read(self, return_pos=True, return_vel=True, part='dm', xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None):
+    def read(self, return_pos=True, return_vel=True, part='dm', xmin=None, xmax=None,
+             ymin=None, ymax=None, zmin=None, zmax=None):
         """Reads file.
 
         Parameters
@@ -164,6 +167,7 @@ class ReadGADGET:
                     if zmax is not None:
                         cond = np.where(_pos[:, 2] > zmax)[0]
                         mask[cond] = 0.
+                    cond = np.where(mask == 1.)[0]
                     _pos = _pos[cond]
                     if return_vel == True:
                         _vel = _vel[cond]
@@ -173,6 +177,7 @@ class ReadGADGET:
                 else:
                     pos = np.concatenate([pos, _pos])
                     vel = np.concatenate([vel, _vel])
+                utils.progress_bar(i, len(files_needed), indexing=True, explanation='Reading from GADGET File')
         # outputs
         if return_pos == True and return_vel == True:
             return pos, vel
