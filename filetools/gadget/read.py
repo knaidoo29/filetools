@@ -138,6 +138,30 @@ class ReadGADGET:
                 pos = pyg.readsnap(self.fname, 'pos', part, single=0)
             if return_vel == True:
                 vel = pyg.readsnap(self.fname, 'vel', part, single=0)
+            if return_pos == True:
+                mask = np.ones(len(pos))
+                if xmin is not None:
+                    cond = np.where(pos[:, 0] < xmin)[0]
+                    mask[cond] = 0.
+                if xmax is not None:
+                    cond = np.where(pos[:, 0] > xmax)[0]
+                    mask[cond] = 0.
+                if ymin is not None:
+                    cond = np.where(pos[:, 1] < ymin)[0]
+                    mask[cond] = 0.
+                if ymax is not None:
+                    cond = np.where(pos[:, 1] > ymax)[0]
+                    mask[cond] = 0.
+                if zmin is not None:
+                    cond = np.where(pos[:, 2] < zmin)[0]
+                    mask[cond] = 0.
+                if zmax is not None:
+                    cond = np.where(pos[:, 2] > zmax)[0]
+                    mask[cond] = 0.
+                cond = np.where(mask == 1.)[0]
+                pos = pos[cond]
+                if return_vel == True:
+                    vel = vel[cond]
         else:
             files_needed = self._is_file_in_range(xmin, xmax, ymin, ymax, zmin, zmax)
             for i in range(0, len(files_needed)):
@@ -173,10 +197,12 @@ class ReadGADGET:
                         _vel = _vel[cond]
                 if i == 0:
                     pos = _pos
-                    vel = _vel
+                    if return_vel == True:
+                        vel = _vel
                 else:
                     pos = np.concatenate([pos, _pos])
-                    vel = np.concatenate([vel, _vel])
+                    if return_vel == True:
+                        vel = np.concatenate([vel, _vel])
                 utils.progress_bar(i, len(files_needed), indexing=True, explanation='Reading from GADGET File')
         # outputs
         if return_pos == True and return_vel == True:
