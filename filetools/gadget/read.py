@@ -1,4 +1,5 @@
 import numpy as np
+import multiprocessing as mp
 import pygadgetreader as pyg
 
 from .. import utils
@@ -107,8 +108,75 @@ class ReadGADGET:
             self.filezmax = dinfo[6]
 
 
+    def readsnap(self, fname, return_pos=True, return_vel=True, part='dm', single=0,
+                 xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None):
+        """Reads snapshot file.
+
+        Parameters
+        ----------
+        fname : str
+            Gadget file name.
+        return_pos : bool, optional
+            Reads and outputs the positions from a GADGET file.
+        return_vel : bool, optional
+            Reads and outputs the velocities from a GADGET file.
+        part : str, optional
+            Particle type, default set to 'dm' (dark matter).
+        single : int, optional
+            If 1 opens a single snapshot part, otherwise opens them all.
+        xmin : float, optional
+            Minimum x-value.
+        xmax : float, optional
+            Maximum x-value.
+        ymin : float, optional
+            Minimum y-value.
+        ymax : float, optional
+            Maximum y-value.
+        zmin : float, optional
+            Minimum z-value.
+        zmax : float, optional
+            Maximum z-value.
+        usepara : bool, optional
+            Open files in parallel if more than one.
+        """
+        if return_pos == True:
+            pos = pyg.readsnap(fname, 'pos', part, single=single)
+        if return_vel == True:
+            vel = pyg.readsnap(fname, 'vel', part, single=single)
+        if return_pos == True:
+            mask = np.ones(len(pos))
+            if xmin is not None:
+                cond = np.where(pos[:, 0] < xmin)[0]
+                mask[cond] = 0.
+            if xmax is not None:
+                cond = np.where(pos[:, 0] > xmax)[0]
+                mask[cond] = 0.
+            if ymin is not None:
+                cond = np.where(pos[:, 1] < ymin)[0]
+                mask[cond] = 0.
+            if ymax is not None:
+                cond = np.where(pos[:, 1] > ymax)[0]
+                mask[cond] = 0.
+            if zmin is not None:
+                cond = np.where(pos[:, 2] < zmin)[0]
+                mask[cond] = 0.
+            if zmax is not None:
+                cond = np.where(pos[:, 2] > zmax)[0]
+                mask[cond] = 0.
+            cond = np.where(mask == 1.)[0]
+            pos = pos[cond]
+            if return_vel == True:
+                vel = vel[cond]
+        if return_pos == True and return_vel == True:
+            return [pos, vel]
+        elif return_pos == True and return_vel == False:
+            return pos
+        elif return_pos == False and return_vel == True:
+            return vel
+
+
     def read(self, return_pos=True, return_vel=True, part='dm', xmin=None, xmax=None,
-             ymin=None, ymax=None, zmin=None, zmax=None):
+             ymin=None, ymax=None, zmin=None, zmax=None, usepara=False, ncpu=4):
         """Reads file.
 
         Parameters
@@ -131,79 +199,69 @@ class ReadGADGET:
             Minimum z-value.
         zmax : float, optional
             Maximum z-value.
+        usepara : bool, optional
+            Open files in parallel if more than one.
+        ncpu : int, optional
+            If usepara is True this sets the number of cpus to run the parallelisation.
         """
         if self.info is None:
             # then we just read the entire thing.
-            if return_pos == True:
-                pos = pyg.readsnap(self.fname, 'pos', part, single=0)
-            if return_vel == True:
-                vel = pyg.readsnap(self.fname, 'vel', part, single=0)
-            if return_pos == True:
-                mask = np.ones(len(pos))
-                if xmin is not None:
-                    cond = np.where(pos[:, 0] < xmin)[0]
-                    mask[cond] = 0.
-                if xmax is not None:
-                    cond = np.where(pos[:, 0] > xmax)[0]
-                    mask[cond] = 0.
-                if ymin is not None:
-                    cond = np.where(pos[:, 1] < ymin)[0]
-                    mask[cond] = 0.
-                if ymax is not None:
-                    cond = np.where(pos[:, 1] > ymax)[0]
-                    mask[cond] = 0.
-                if zmin is not None:
-                    cond = np.where(pos[:, 2] < zmin)[0]
-                    mask[cond] = 0.
-                if zmax is not None:
-                    cond = np.where(pos[:, 2] > zmax)[0]
-                    mask[cond] = 0.
-                cond = np.where(mask == 1.)[0]
-                pos = pos[cond]
-                if return_vel == True:
-                    vel = vel[cond]
+            out = self.readsnap(self.fname, return_pos=return_pos, return_vel=return_vel,
+                                part=part, single=0, xmin=xmin, xmax=xmax, ymin=ymin,
+                                ymax=ymax, zmin=zmin, zmax=zmax)
+            if return_pos == True and return_vel == True:
+                pos, vel = out[0], out[1]
+            elif return_pos == True and return_vel == False:
+                pos = out
+            elif return_pos == False and return_vel == True:
+                vel = out
         else:
             files_needed = self._is_file_in_range(xmin, xmax, ymin, ymax, zmin, zmax)
-            for i in range(0, len(files_needed)):
-                fname_chunk = self.fname + '.' + str(files_needed[i])
-                if return_pos == True:
-                    _pos = pyg.readsnap(fname_chunk, 'pos', part, single=1)
-                if return_vel == True:
-                    _vel = pyg.readsnap(fname_chunk, 'vel', part, single=1)
-                # Truncate the data if we have position data.
-                if return_pos == True:
-                    mask = np.ones(len(_pos))
-                    if xmin is not None:
-                        cond = np.where(_pos[:, 0] < xmin)[0]
-                        mask[cond] = 0.
-                    if xmax is not None:
-                        cond = np.where(_pos[:, 0] > xmax)[0]
-                        mask[cond] = 0.
-                    if ymin is not None:
-                        cond = np.where(_pos[:, 1] < ymin)[0]
-                        mask[cond] = 0.
-                    if ymax is not None:
-                        cond = np.where(_pos[:, 1] > ymax)[0]
-                        mask[cond] = 0.
-                    if zmin is not None:
-                        cond = np.where(_pos[:, 2] < zmin)[0]
-                        mask[cond] = 0.
-                    if zmax is not None:
-                        cond = np.where(_pos[:, 2] > zmax)[0]
-                        mask[cond] = 0.
-                    cond = np.where(mask == 1.)[0]
-                    _pos = _pos[cond]
-                    if return_vel == True:
-                        _vel = _vel[cond]
-                if i == 0:
-                    pos = _pos
-                    if return_vel == True:
-                        vel = _vel
-                else:
-                    pos = np.concatenate([pos, _pos])
-                    if return_vel == True:
-                        vel = np.concatenate([vel, _vel])
-                utils.progress_bar(i, len(files_needed), indexing=True, explanation='Reading from GADGET File')
+            if usepara == False:
+                for i in range(0, len(files_needed)):
+                    fname_chunk = self.fname + '.' + str(files_needed[i])
+                    _out = self.readsnap(fname_chunk, return_pos=return_pos, return_vel=return_vel,
+                                         part=part, single=1, xmin=xmin, xmax=xmax, ymin=ymin,
+                                         ymax=ymax, zmin=zmin, zmax=zmax)
+                    if return_pos == True and return_vel == True:
+                        _pos, _vel = _out[0], _out[1]
+                    elif return_pos == True and return_vel == False:
+                        _pos = _out
+                    elif return_pos == False and return_vel == True:
+                        _vel = _out
+                    if i == 0:
+                        pos = _pos
+                        if return_vel == True:
+                            vel = _vel
+                    else:
+                        pos = np.concatenate([pos, _pos])
+                        if return_vel == True:
+                            vel = np.concatenate([vel, _vel])
+                    utils.progress_bar(i, len(files_needed), indexing=True, explanation='Reading from GADGET File')
+            else:
+                fnames = []
+                for i in range(0, len(files_needed)):
+                    fname_chunk = self.fname + '.' + str(files_needed[i])
+                    fnames.append(fname_chunk)
+                # Step 1: Init multiprocessing.Pool()
+                pool = mp.Pool(ncpu)
+                # Step 2: `pool.apply` the `howmany_within_range()`
+                outs = [pool.apply(self.readsnap, args=(fname, return_pos, return_vel,
+                        part, 1, xmin, xmax, ymin, ymax, zmin, zmax)) for fname in fnames]
+                # Step 3: Don't forget to close
+                pool.close()
+                if return_pos == True and return_vel == True:
+                    poss = []
+                    vels = []
+                    for i in range(0, len(outs)):
+                        poss.append(outs[i][0])
+                        vels.append(outs[i][1])
+                    pos = np.concatenate(poss)
+                    vel = np.concatenate(vels)
+                elif return_pos == True and return_vel == False:
+                    pos = np.concatenate(outs)
+                elif return_pos == False and return_vel == True:
+                    vel = np.concatenate(outs)
         # outputs
         if return_pos == True and return_vel == True:
             return pos, vel
