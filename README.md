@@ -55,6 +55,9 @@ while reader.current_chunk < 4:
 * `folder` :
   * `folder.create_folder`: creates a folder with a specified name in a given path.
 * `gadget` :
+  * `gadget.get_gadget_info` : Returns information about a simulation snapshot.
+  * `gadget.gadget2ascii` : Creates ascii copy of a gadget file.
+  * `gadget.rm_gadget_ascii_copy` : Removes gadget ascii copy.
   * `gadget.ReadGADGET` : Reads Gadget file in chunks.
 * `hdf5` :
   * `hdf5.get_hdf5_data` : Reads HDF5 files.
