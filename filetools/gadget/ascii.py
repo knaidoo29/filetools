@@ -53,7 +53,7 @@ def gadget2ascii(gfname, infoname, ncpu=4):
     outs = [pool.apply(gadget2ascii_single, args=(fnames[i], nparts[i])) for i in range(0, len(blocks))]
     # Step 3: Don't forget to close
     pool.close()
-    
+
 
 def rm_gadget_ascii_copy(gfname):
     """Removes all ascii copies of the gadget file.
@@ -63,4 +63,4 @@ def rm_gadget_ascii_copy(gfname):
     gfname : str
         Gadget filename root.
     """
-    subprocess.call('rm ' + gfname + '_*.ascii', shell=True)
+    subprocess.call('rm ' + gfname + '*.ascii', shell=True)
