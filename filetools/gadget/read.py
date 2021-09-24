@@ -243,11 +243,13 @@ class ReadGADGET:
                 for i in range(0, len(files_needed)):
                     fname_chunk = self.fname + '.' + str(files_needed[i])
                     fnames.append(fname_chunk)
+                args_list = [(fname, return_pos, return_vel, part, 1, xmin, xmax, ymin, ymax, zmin, zmax) for fname in fnames]
                 # Step 1: Init multiprocessing.Pool()
                 pool = mp.Pool(ncpu)
                 # Step 2: `pool.apply` the `howmany_within_range()`
-                outs = [pool.apply(self.readsnap, args=(fname, return_pos, return_vel,
-                        part, 1, xmin, xmax, ymin, ymax, zmin, zmax)) for fname in fnames]
+                output = pool.starmap(self.readsnap, args_list)
+                #outs = [pool.apply(self.readsnap, args=(fname, return_pos, return_vel,
+                #        part, 1, xmin, xmax, ymin, ymax, zmin, zmax)) for fname in fnames]
                 # Step 3: Don't forget to close
                 pool.close()
                 if return_pos == True and return_vel == True:

@@ -2,28 +2,7 @@ import numpy as np
 import subprocess
 import multiprocessing as mp
 
-from . import read
-
-
-def gadget2ascii_single(gfname_single, IDstart=0):
-    """Converts single Gadget file into ascii format.
-
-    Parameters
-    ----------
-    gfname_single : str
-        Single gadget filename.
-    IDstart : int
-        Particle ID starter.
-    """
-    reader = read.ReadGADGET()
-    posvel = reader.readsnap(gfname_single, return_pos=True, return_vel=True, part='dm', single=1)
-    pos, vel = posvel[0], posvel[1]
-    x, y, z = pos[:, 0], pos[:, 1], pos[:, 2]
-    vx, vy, vz = vel[:, 0], vel[:, 1], vel[:, 2]
-    partid = np.arange(len(x), dtype='int')
-    if IDstart != 0:
-        partid += IDstart
-    np.savetxt(gfname_single + '.ascii', np.column_stack([x, y, z, vx, vy, vz, partid]))
+from . import ascii_single
 
 
 def gadget2ascii(gfname, infoname, ncpu=4):
@@ -48,9 +27,10 @@ def gadget2ascii(gfname, infoname, ncpu=4):
     for i in range(0, len(blocks)):
         fnames.append(gfname + '.' + str(i))
     # Step 1: Init multiprocessing.Pool()
+    args_list = [(fnames[i], nparts[i]) for i in range(0, len(blocks))]
     pool = mp.Pool(ncpu)
-    # Step 2: `pool.apply`
-    outs = [pool.apply(gadget2ascii_single, args=(fnames[i], nparts[i])) for i in range(0, len(blocks))]
+    # Step 2: `pool.starmap` for multiple arguments
+    output = pool.starmap(ascii_single.gadget2ascii_single, args_list)
     # Step 3: Don't forget to close
     pool.close()
 
