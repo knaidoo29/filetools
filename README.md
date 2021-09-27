@@ -10,6 +10,7 @@ for handling this.
 * `h5py`
 * [`pygadgetreader`](https://github.com/jveitchmichaelis/pygadgetreader)
 * [`fitsio`](https://github.com/esheldon/fitsio)
+* `mpi4py`
 
 ## Installation
 

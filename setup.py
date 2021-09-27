@@ -14,7 +14,7 @@ exts = [ext1]
 
 setup(name = 'filetools',
       version = '0.0.0',
-      description       = "FIeld ESTimAtor.",
+      description       = "A module for reading and writing files.",
       long_description  = long_description,
       long_description_content_type = 'text/markdown',
       url               = 'https://github.com/knaidoo29/filetools',

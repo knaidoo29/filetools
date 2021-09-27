@@ -1,7 +1,7 @@
 import numpy as np
-import multiprocessing as mp
 import pygadgetreader as pyg
 
+from . import read_single
 from .. import utils
 
 
@@ -139,44 +139,13 @@ class ReadGADGET:
         usepara : bool, optional
             Open files in parallel if more than one.
         """
-        if return_pos == True:
-            pos = pyg.readsnap(fname, 'pos', part, single=single)
-        if return_vel == True:
-            vel = pyg.readsnap(fname, 'vel', part, single=single)
-        if return_pos == True:
-            mask = np.ones(len(pos))
-            if xmin is not None:
-                cond = np.where(pos[:, 0] < xmin)[0]
-                mask[cond] = 0.
-            if xmax is not None:
-                cond = np.where(pos[:, 0] > xmax)[0]
-                mask[cond] = 0.
-            if ymin is not None:
-                cond = np.where(pos[:, 1] < ymin)[0]
-                mask[cond] = 0.
-            if ymax is not None:
-                cond = np.where(pos[:, 1] > ymax)[0]
-                mask[cond] = 0.
-            if zmin is not None:
-                cond = np.where(pos[:, 2] < zmin)[0]
-                mask[cond] = 0.
-            if zmax is not None:
-                cond = np.where(pos[:, 2] > zmax)[0]
-                mask[cond] = 0.
-            cond = np.where(mask == 1.)[0]
-            pos = pos[cond]
-            if return_vel == True:
-                vel = vel[cond]
-        if return_pos == True and return_vel == True:
-            return [pos, vel]
-        elif return_pos == True and return_vel == False:
-            return pos
-        elif return_pos == False and return_vel == True:
-            return vel
+        return read_single.readsnap(fname, return_pos=return_pos, return_vel=return_vel,
+                                    part=part, single=single, xmin=xmin, xmax=xmax,
+                                    ymin=ymin, ymax=ymax, zmin=zmin, zmax=zmax)
 
 
     def read(self, return_pos=True, return_vel=True, part='dm', xmin=None, xmax=None,
-             ymin=None, ymax=None, zmin=None, zmax=None, usepara=False, ncpu=4):
+             ymin=None, ymax=None, zmin=None, zmax=None, MPI=None, combine=True):
         """Reads file.
 
         Parameters
@@ -199,10 +168,10 @@ class ReadGADGET:
             Minimum z-value.
         zmax : float, optional
             Maximum z-value.
-        usepara : bool, optional
-            Open files in parallel if more than one.
-        ncpu : int, optional
-            If usepara is True this sets the number of cpus to run the parallelisation.
+        MPI : obj, optional
+            mpiutils MPI class object.
+        combine : bool, optional
+            If MPI is on this sets whether we need to combine the final dataset.
         """
         if self.info is None:
             # then we just read the entire thing.
@@ -239,38 +208,75 @@ class ReadGADGET:
                             vel = np.concatenate([vel, _vel])
                     utils.progress_bar(i, len(files_needed), indexing=True, explanation='Reading from GADGET File')
             else:
-                fnames = []
-                for i in range(0, len(files_needed)):
-                    fname_chunk = self.fname + '.' + str(files_needed[i])
-                    fnames.append(fname_chunk)
-                args_list = [(fname, return_pos, return_vel, part, 1, xmin, xmax, ymin, ymax, zmin, zmax) for fname in fnames]
-                # Step 1: Init multiprocessing.Pool()
-                pool = mp.Pool(ncpu)
-                # Step 2: `pool.apply` the `howmany_within_range()`
-                output = pool.starmap(self.readsnap, args_list)
-                #outs = [pool.apply(self.readsnap, args=(fname, return_pos, return_vel,
-                #        part, 1, xmin, xmax, ymin, ymax, zmin, zmax)) for fname in fnames]
-                # Step 3: Don't forget to close
-                pool.close()
-                if return_pos == True and return_vel == True:
-                    poss = []
-                    vels = []
-                    for i in range(0, len(outs)):
-                        poss.append(outs[i][0])
-                        vels.append(outs[i][1])
-                    pos = np.concatenate(poss)
-                    vel = np.concatenate(vels)
-                elif return_pos == True and return_vel == False:
-                    pos = np.concatenate(outs)
-                elif return_pos == False and return_vel == True:
-                    vel = np.concatenate(outs)
+                if MPI.rank == 0:
+                    fnames = []
+                    for i in range(0, len(files_needed)):
+                        fname_chunk = self.fname + '.' + str(files_needed[i])
+                        fnames.append(fname_chunk)
+                    MPI.send(fnames, tag=11)
+                else:
+                    MPI.recv(0, tag=11)
+                MPI.wait()
+                MPI_loop_size = MPI.set_loop(len(fnames))
+                for mpi_ind in range(0, MPI_loop_size):
+                    i = MPI.mpi_ind2ind(mpi_ind)
+                    if i is not None:
+                        _out = self.readsnap(fnames[i], return_pos, return_vel, part,
+                                             1, xmin, xmax, ymin, ymax, zmin, zmax)
+                        if return_pos == True and return_vel == True:
+                            _pos, _vel = _out[0], _out[1]
+                        elif return_pos == True and return_vel == False:
+                            _pos = _out
+                        elif return_pos == False and return_vel == True:
+                            _vel = _out
+                        if mpi_ind == 0:
+                            pos = _pos
+                            if return_vel == True:
+                                vel = _vel
+                        else:
+                            pos = np.concatenate([pos, _pos])
+                            if return_vel == True:
+                                vel = np.concatenate([vel, _vel])
+                if combine == True:
+                    if MPI.rank != 0:
+                        if return_pos == True:
+                            MPI.send(pos, to_rank=0, tag=11)
+                        if return_vel == True:
+                            MPI.send(vos, to_rank=0, tag=12)
+                    else:
+                        if return_pos == True:
+                            poss = [pos]
+                        if return_vel == True:
+                            vels = [vel]
+                        for i in range(1, MPI.size)
+                            if return_pos == True:
+                                _pos = MPI.recv(i, tag=11)
+                                poss.append(_pos)
+                            if return_vel == True:
+                                _vel = MPI.recv(i, tag=12)
+                                vels.append(_vel)
+                        if return_pos == True:
+                            pos = np.concatenate(poss)
+                        if return_vel == True:
+                            vel = np.concatenate(vels)
         # outputs
-        if return_pos == True and return_vel == True:
-            return pos, vel
-        elif return_pos == True and return_vel == False:
-            return pos
-        elif return_pos == False and return_vel == True:
-            return vel
+        if combine == True:
+            if MPI.rand == 0:
+                if return_pos == True and return_vel == True:
+                    return pos, vel
+                elif return_pos == True and return_vel == False:
+                    return pos
+                elif return_pos == False and return_vel == True:
+                    return vel
+            else:
+                return None
+        else:
+            if return_pos == True and return_vel == True:
+                return pos, vel
+            elif return_pos == True and return_vel == False:
+                return pos
+            elif return_pos == False and return_vel == True:
+                return vel
 
 
     def clean(self):
