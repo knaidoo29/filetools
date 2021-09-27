@@ -186,7 +186,7 @@ class ReadGADGET:
                 vel = out
         else:
             files_needed = self._is_file_in_range(xmin, xmax, ymin, ymax, zmin, zmax)
-            if usepara == False:
+            if MPI is None:
                 for i in range(0, len(files_needed)):
                     fname_chunk = self.fname + '.' + str(files_needed[i])
                     _out = self.readsnap(fname_chunk, return_pos=return_pos, return_vel=return_vel,
@@ -215,7 +215,7 @@ class ReadGADGET:
                         fnames.append(fname_chunk)
                     MPI.send(fnames, tag=11)
                 else:
-                    MPI.recv(0, tag=11)
+                    fnames = MPI.recv(0, tag=11)
                 MPI.wait()
                 MPI_loop_size = MPI.set_loop(len(fnames))
                 for mpi_ind in range(0, MPI_loop_size):
@@ -242,13 +242,13 @@ class ReadGADGET:
                         if return_pos == True:
                             MPI.send(pos, to_rank=0, tag=11)
                         if return_vel == True:
-                            MPI.send(vos, to_rank=0, tag=12)
+                            MPI.send(vel, to_rank=0, tag=12)
                     else:
                         if return_pos == True:
                             poss = [pos]
                         if return_vel == True:
                             vels = [vel]
-                        for i in range(1, MPI.size)
+                        for i in range(1, MPI.size):
                             if return_pos == True:
                                 _pos = MPI.recv(i, tag=11)
                                 poss.append(_pos)
@@ -261,7 +261,7 @@ class ReadGADGET:
                             vel = np.concatenate(vels)
         # outputs
         if combine == True:
-            if MPI.rand == 0:
+            if MPI.rank == 0:
                 if return_pos == True and return_vel == True:
                     return pos, vel
                 elif return_pos == True and return_vel == False:
@@ -269,7 +269,12 @@ class ReadGADGET:
                 elif return_pos == False and return_vel == True:
                     return vel
             else:
-                return None
+                if return_pos == True and return_vel == True:
+                    return None, None
+                elif return_pos == True and return_vel == False:
+                    return None
+                elif return_pos == False and return_vel == True:
+                    return None
         else:
             if return_pos == True and return_vel == True:
                 return pos, vel
