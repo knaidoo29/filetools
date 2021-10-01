@@ -242,11 +242,14 @@ class ReadGADGET:
                                 vels.append(_vel)
                     else:
                         if mpi_ind == 0:
-                            pos = None
-                            vel = None
-                pos = np.concatenate(poss)
-                if return_vel == True:
-                    vel = np.concatenate(vels)
+                            poss = []
+                            vels = []
+                if len(poss) != 0:
+                    pos = np.concatenate(poss)
+                    if return_vel == True:
+                        vel = np.concatenate(vels)
+                else:
+                    pos, vel = None, None
                 if combine == True and MPI is not None:
                     if MPI.rank != 0:
                         if return_pos == True:
