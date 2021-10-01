@@ -199,14 +199,17 @@ class ReadGADGET:
                     elif return_pos == False and return_vel == True:
                         _vel = _out
                     if i == 0:
-                        pos = _pos
+                        poss = [_pos]
                         if return_vel == True:
-                            vel = _vel
+                            vels = [_vel]
                     else:
-                        pos = np.concatenate([pos, _pos])
+                        poss.append(_pos)
                         if return_vel == True:
-                            vel = np.concatenate([vel, _vel])
+                            vels.append(_vel)
                     utils.progress_bar(i, len(files_needed), indexing=True, explanation='Reading from GADGET File')
+                pos = np.concatenate(poss)
+                if return_vel == True:
+                    vel = np.concatenate(vels)
             else:
                 if MPI.rank == 0:
                     fnames = []
@@ -230,14 +233,21 @@ class ReadGADGET:
                         elif return_pos == False and return_vel == True:
                             _vel = _out
                         if mpi_ind == 0:
-                            pos = _pos
+                            poss = [_pos]
                             if return_vel == True:
-                                vel = _vel
+                                vels = [_vel]
                         else:
-                            pos = np.concatenate([pos, _pos])
+                            poss.append(_pos)
                             if return_vel == True:
-                                vel = np.concatenate([vel, _vel])
-                if combine == True:
+                                vels.append(_vel)
+                    else:
+                        if mpi_ind == 0:
+                            pos = None
+                            vel = None
+                pos = np.concatenate(poss)
+                if return_vel == True:
+                    vel = np.concatenate(vels)
+                if combine == True and MPI is not None:
                     if MPI.rank != 0:
                         if return_pos == True:
                             MPI.send(pos, to_rank=0, tag=11)
@@ -251,16 +261,18 @@ class ReadGADGET:
                         for i in range(1, MPI.size):
                             if return_pos == True:
                                 _pos = MPI.recv(i, tag=11)
-                                poss.append(_pos)
+                                if _pos is not None:
+                                    poss.append(_pos)
                             if return_vel == True:
                                 _vel = MPI.recv(i, tag=12)
-                                vels.append(_vel)
+                                if _vel is not None:
+                                    vels.append(_vel)
                         if return_pos == True:
                             pos = np.concatenate(poss)
                         if return_vel == True:
                             vel = np.concatenate(vels)
         # outputs
-        if combine == True:
+        if combine == True and MPI is not None:
             if MPI.rank == 0:
                 if return_pos == True and return_vel == True:
                     return pos, vel
