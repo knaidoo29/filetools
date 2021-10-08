@@ -149,7 +149,7 @@ class ReadGADGET:
 
     def read(self, return_pos=True, return_vel=True, return_pid=False, part='dm',
              xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None,
-             MPI=None, combine=True, suppress=suppress):
+             MPI=None, combine=True, suppress=1):
         """Reads file.
 
         Parameters
@@ -177,7 +177,7 @@ class ReadGADGET:
         MPI : obj, optional
             mpiutils MPI class object.
         combine : bool, optional
-            If MPI is on this sets whether we need to combine the final dataset.        
+            If MPI is on this sets whether we need to combine the final dataset.
         suppress : int, optional
             Suppresses print statements from pygadgetreader.
         """
