@@ -328,7 +328,7 @@ class ReadGADGET:
         # outputs
         if combine == True and MPI is not None:
             if MPI.rank == 0:
-                if return_pid == True
+                if return_pid == True:
                     if return_pos == True and return_vel == True:
                         return pos, vel, pid
                     elif return_pos == True and return_vel == False:
