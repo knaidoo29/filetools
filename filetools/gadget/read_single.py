@@ -2,8 +2,8 @@ import numpy as np
 import pygadgetreader as pyg
 
 
-def readsnap(fname, return_pos=True, return_vel=True, part='dm', single=0,
-         xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None):
+def readsnap(fname, return_pos=True, return_vel=True, return_pid=False, part='dm', single=0,
+             xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None):
     """Reads snapshot file.
 
     Parameters
@@ -14,6 +14,8 @@ def readsnap(fname, return_pos=True, return_vel=True, part='dm', single=0,
         Reads and outputs the positions from a GADGET file.
     return_vel : bool, optional
         Reads and outputs the velocities from a GADGET file.
+    return_pid : bool, optional
+        Reads and outputs the particle IDs from a GADGET file.
     part : str, optional
         Particle type, default set to 'dm' (dark matter).
     single : int, optional
@@ -37,6 +39,8 @@ def readsnap(fname, return_pos=True, return_vel=True, part='dm', single=0,
         pos = pyg.readsnap(fname, 'pos', part, single=single)
     if return_vel == True:
         vel = pyg.readsnap(fname, 'vel', part, single=single)
+    if return_pid == True:
+        pid = pyg.readsnap(fname, 'pid', part, single=single)
     if return_pos == True:
         mask = np.ones(len(pos))
         if xmin is not None:
@@ -61,9 +65,19 @@ def readsnap(fname, return_pos=True, return_vel=True, part='dm', single=0,
         pos = pos[cond]
         if return_vel == True:
             vel = vel[cond]
-    if return_pos == True and return_vel == True:
-        return [pos, vel]
-    elif return_pos == True and return_vel == False:
-        return pos
-    elif return_pos == False and return_vel == True:
-        return vel
+        if return_pid == True:
+            pid = pid[cond]
+    if return_pid == True:
+        if return_pos == True and return_vel == True:
+            return [pos, vel, pid]
+        elif return_pos == True and return_vel == False:
+            return [pos, pid]
+        elif return_pos == False and return_vel == True:
+            return [vel, pid]
+    else:
+        if return_pos == True and return_vel == True:
+            return [pos, vel]
+        elif return_pos == True and return_vel == False:
+            return pos
+        elif return_pos == False and return_vel == True:
+            return vel

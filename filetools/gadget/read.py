@@ -108,7 +108,7 @@ class ReadGADGET:
             self.filezmax = dinfo[6]
 
 
-    def readsnap(self, fname, return_pos=True, return_vel=True, part='dm', single=0,
+    def readsnap(self, fname, return_pos=True, return_vel=True, return_pid=False, part='dm', single=0,
                  xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None):
         """Reads snapshot file.
 
@@ -120,6 +120,8 @@ class ReadGADGET:
             Reads and outputs the positions from a GADGET file.
         return_vel : bool, optional
             Reads and outputs the velocities from a GADGET file.
+        return_pid : bool, optional
+            Reads and outputs the particle IDs from a GADGET file.
         part : str, optional
             Particle type, default set to 'dm' (dark matter).
         single : int, optional
@@ -140,12 +142,12 @@ class ReadGADGET:
             Open files in parallel if more than one.
         """
         return read_single.readsnap(fname, return_pos=return_pos, return_vel=return_vel,
-                                    part=part, single=single, xmin=xmin, xmax=xmax,
-                                    ymin=ymin, ymax=ymax, zmin=zmin, zmax=zmax)
+                                    return_pid=return_pid, part=part, single=single,
+                                    xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, zmin=zmin, zmax=zmax)
 
 
-    def read(self, return_pos=True, return_vel=True, part='dm', xmin=None, xmax=None,
-             ymin=None, ymax=None, zmin=None, zmax=None, MPI=None, combine=True):
+    def read(self, return_pos=True, return_vel=True, return_pid=False, part='dm',
+             xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None, MPI=None, combine=True):
         """Reads file.
 
         Parameters
@@ -154,6 +156,8 @@ class ReadGADGET:
             Reads and outputs the positions from a GADGET file.
         return_vel : bool, optional
             Reads and outputs the velocities from a GADGET file.
+        return_pid : bool, optional
+            Reads and outputs the particle IDs from a GADGET file.
         part : str, optional
             Particle type, default set to 'dm' (dark matter).
         xmin : float, optional
@@ -175,41 +179,63 @@ class ReadGADGET:
         """
         if self.info is None:
             # then we just read the entire thing.
-            out = self.readsnap(self.fname, return_pos=return_pos, return_vel=return_vel,
+            out = self.readsnap(self.fname, return_pos=return_pos, return_vel=return_vel, return_pid=return_pid,
                                 part=part, single=0, xmin=xmin, xmax=xmax, ymin=ymin,
                                 ymax=ymax, zmin=zmin, zmax=zmax)
-            if return_pos == True and return_vel == True:
-                pos, vel = out[0], out[1]
-            elif return_pos == True and return_vel == False:
-                pos = out
-            elif return_pos == False and return_vel == True:
-                vel = out
+            if return_pid == True:
+                if return_pos == True and return_vel == True:
+                    pos, vel, pid = out[0], out[1], out[2]
+                elif return_pos == True and return_vel == False:
+                    pos, pid = out[0], out[1]
+                elif return_pos == False and return_vel == True:
+                    vel, pid = out[0], out[1]
+            else:
+                if return_pos == True and return_vel == True:
+                    pos, vel = out[0], out[1]
+                elif return_pos == True and return_vel == False:
+                    pos = out
+                elif return_pos == False and return_vel == True:
+                    vel = out
         else:
             files_needed = self._is_file_in_range(xmin, xmax, ymin, ymax, zmin, zmax)
             if MPI is None:
                 for i in range(0, len(files_needed)):
                     fname_chunk = self.fname + '.' + str(files_needed[i])
-                    _out = self.readsnap(fname_chunk, return_pos=return_pos, return_vel=return_vel,
+                    _out = self.readsnap(fname_chunk, return_pos=return_pos, return_vel=return_vel, return_pid=return_pid,
                                          part=part, single=1, xmin=xmin, xmax=xmax, ymin=ymin,
                                          ymax=ymax, zmin=zmin, zmax=zmax)
-                    if return_pos == True and return_vel == True:
-                        _pos, _vel = _out[0], _out[1]
-                    elif return_pos == True and return_vel == False:
-                        _pos = _out
-                    elif return_pos == False and return_vel == True:
-                        _vel = _out
+                    if return_pid == True:
+                        if return_pos == True and return_vel == True:
+                            _pos, _vel, _pid = _out[0], _out[1], _out[2]
+                        elif return_pos == True and return_vel == False:
+                            _pos, _pid = _out[0], _out[1]
+                        elif return_pos == False and return_vel == True:
+                            _vel, _pid = _out[0], _out[1]
+                    else:
+                        if return_pos == True and return_vel == True:
+                            _pos, _vel = _out[0], _out[1]
+                        elif return_pos == True and return_vel == False:
+                            _pos = _out
+                        elif return_pos == False and return_vel == True:
+                            _vel = _out
                     if i == 0:
                         poss = [_pos]
                         if return_vel == True:
                             vels = [_vel]
+                        if return_pid == True:
+                            pids = [_pid]
                     else:
                         poss.append(_pos)
                         if return_vel == True:
                             vels.append(_vel)
+                        if return_pid == True:
+                            pids.append(_pid)
                     utils.progress_bar(i, len(files_needed), indexing=True, explanation='Reading from GADGET File')
                 pos = np.concatenate(poss)
                 if return_vel == True:
                     vel = np.concatenate(vels)
+                if return_pid == True:
+                    pid = np.concatenate(pids)
             else:
                 if MPI.rank == 0:
                     fnames = []
@@ -224,30 +250,45 @@ class ReadGADGET:
                 for mpi_ind in range(0, MPI_loop_size):
                     i = MPI.mpi_ind2ind(mpi_ind)
                     if i is not None:
-                        _out = self.readsnap(fnames[i], return_pos, return_vel, part,
+                        _out = self.readsnap(fnames[i], return_pos, return_vel, return_pid, part,
                                              1, xmin, xmax, ymin, ymax, zmin, zmax)
-                        if return_pos == True and return_vel == True:
-                            _pos, _vel = _out[0], _out[1]
-                        elif return_pos == True and return_vel == False:
-                            _pos = _out
-                        elif return_pos == False and return_vel == True:
-                            _vel = _out
+                        if return_pid == True:
+                            if return_pos == True and return_vel == True:
+                                _pos, _vel, _pid = _out[0], _out[1], _out[2]
+                            elif return_pos == True and return_vel == False:
+                                _pos, _pid = _out[0], _out[1]
+                            elif return_pos == False and return_vel == True:
+                                _vel, _pid = _out[0], _out[1]
+                        else:
+                            if return_pos == True and return_vel == True:
+                                _pos, _vel = _out[0], _out[1]
+                            elif return_pos == True and return_vel == False:
+                                _pos = _out
+                            elif return_pos == False and return_vel == True:
+                                _vel = _out
                         if mpi_ind == 0:
                             poss = [_pos]
                             if return_vel == True:
                                 vels = [_vel]
+                            if return_pid == True:
+                                pids = [_pid]
                         else:
                             poss.append(_pos)
                             if return_vel == True:
                                 vels.append(_vel)
+                            if return_pid == True:
+                                pids.append(_pid)
                     else:
                         if mpi_ind == 0:
                             poss = []
                             vels = []
+                            pids = []
                 if len(poss) != 0:
                     pos = np.concatenate(poss)
                     if return_vel == True:
                         vel = np.concatenate(vels)
+                    if return_pid == True:
+                        pid = np.concatenate(pids)
                 else:
                     pos, vel = None, None
                 if combine == True and MPI is not None:
@@ -256,11 +297,15 @@ class ReadGADGET:
                             MPI.send(pos, to_rank=0, tag=11)
                         if return_vel == True:
                             MPI.send(vel, to_rank=0, tag=12)
+                        if return_pid == True:
+                            MPI.send(pid, to_rank=0, tag=13)
                     else:
                         if return_pos == True:
                             poss = [pos]
                         if return_vel == True:
                             vels = [vel]
+                        if return_pid == True:
+                            pids = [pid]
                         for i in range(1, MPI.size):
                             if return_pos == True:
                                 _pos = MPI.recv(i, tag=11)
@@ -270,33 +315,63 @@ class ReadGADGET:
                                 _vel = MPI.recv(i, tag=12)
                                 if _vel is not None:
                                     vels.append(_vel)
+                            if return_pid == True:
+                                _pid = MPI.recv(i, tag=13)
+                                if _pid is not None:
+                                    pids.append(_pid)
                         if return_pos == True:
                             pos = np.concatenate(poss)
                         if return_vel == True:
                             vel = np.concatenate(vels)
+                        if return_pid == True:
+                            pid = np.concatenate(pids)
         # outputs
         if combine == True and MPI is not None:
             if MPI.rank == 0:
+                if return_pid == True
+                    if return_pos == True and return_vel == True:
+                        return pos, vel, pid
+                    elif return_pos == True and return_vel == False:
+                        return pos, pid
+                    elif return_pos == False and return_vel == True:
+                        return vel, pid
+                else:
+                    if return_pos == True and return_vel == True:
+                        return pos, vel
+                    elif return_pos == True and return_vel == False:
+                        return pos
+                    elif return_pos == False and return_vel == True:
+                        return vel
+            else:
+                if return_pid == True
+                    if return_pos == True and return_vel == True:
+                        return None, None, None
+                    elif return_pos == True and return_vel == False:
+                        return None, None
+                    elif return_pos == False and return_vel == True:
+                        return None, None
+                else:
+                    if return_pos == True and return_vel == True:
+                        return None, None
+                    elif return_pos == True and return_vel == False:
+                        return None
+                    elif return_pos == False and return_vel == True:
+                        return None
+        else:
+            if return_pid == True:
+                if return_pos == True and return_vel == True:
+                    return pos, vel, pid
+                elif return_pos == True and return_vel == False:
+                    return pos, pid
+                elif return_pos == False and return_vel == True:
+                    return vel, pid
+            else:
                 if return_pos == True and return_vel == True:
                     return pos, vel
                 elif return_pos == True and return_vel == False:
                     return pos
                 elif return_pos == False and return_vel == True:
                     return vel
-            else:
-                if return_pos == True and return_vel == True:
-                    return None, None
-                elif return_pos == True and return_vel == False:
-                    return None
-                elif return_pos == False and return_vel == True:
-                    return None
-        else:
-            if return_pos == True and return_vel == True:
-                return pos, vel
-            elif return_pos == True and return_vel == False:
-                return pos
-            elif return_pos == False and return_vel == True:
-                return vel
 
 
     def clean(self):
