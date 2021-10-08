@@ -343,7 +343,7 @@ class ReadGADGET:
                     elif return_pos == False and return_vel == True:
                         return vel
             else:
-                if return_pid == True
+                if return_pid == True:
                     if return_pos == True and return_vel == True:
                         return None, None, None
                     elif return_pos == True and return_vel == False:
