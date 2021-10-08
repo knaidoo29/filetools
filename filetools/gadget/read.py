@@ -109,7 +109,7 @@ class ReadGADGET:
 
 
     def readsnap(self, fname, return_pos=True, return_vel=True, return_pid=False, part='dm', single=0,
-                 xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None):
+                 xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None, suppress=1):
         """Reads snapshot file.
 
         Parameters
@@ -138,16 +138,18 @@ class ReadGADGET:
             Minimum z-value.
         zmax : float, optional
             Maximum z-value.
-        usepara : bool, optional
-            Open files in parallel if more than one.
+        suppress : int, optional
+            Suppresses print statements from pygadgetreader.
         """
         return read_single.readsnap(fname, return_pos=return_pos, return_vel=return_vel,
                                     return_pid=return_pid, part=part, single=single,
-                                    xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax, zmin=zmin, zmax=zmax)
+                                    xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax,
+                                    zmin=zmin, zmax=zmax, suppress=suppress)
 
 
     def read(self, return_pos=True, return_vel=True, return_pid=False, part='dm',
-             xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None, MPI=None, combine=True):
+             xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None,
+             MPI=None, combine=True, suppress=suppress):
         """Reads file.
 
         Parameters
@@ -175,13 +177,15 @@ class ReadGADGET:
         MPI : obj, optional
             mpiutils MPI class object.
         combine : bool, optional
-            If MPI is on this sets whether we need to combine the final dataset.
+            If MPI is on this sets whether we need to combine the final dataset.        
+        suppress : int, optional
+            Suppresses print statements from pygadgetreader.
         """
         if self.info is None:
             # then we just read the entire thing.
             out = self.readsnap(self.fname, return_pos=return_pos, return_vel=return_vel, return_pid=return_pid,
                                 part=part, single=0, xmin=xmin, xmax=xmax, ymin=ymin,
-                                ymax=ymax, zmin=zmin, zmax=zmax)
+                                ymax=ymax, zmin=zmin, zmax=zmax, suppress=suppress)
             if return_pid == True:
                 if return_pos == True and return_vel == True:
                     pos, vel, pid = out[0], out[1], out[2]
@@ -203,7 +207,7 @@ class ReadGADGET:
                     fname_chunk = self.fname + '.' + str(files_needed[i])
                     _out = self.readsnap(fname_chunk, return_pos=return_pos, return_vel=return_vel, return_pid=return_pid,
                                          part=part, single=1, xmin=xmin, xmax=xmax, ymin=ymin,
-                                         ymax=ymax, zmin=zmin, zmax=zmax)
+                                         ymax=ymax, zmin=zmin, zmax=zmax, suppress=suppress)
                     if return_pid == True:
                         if return_pos == True and return_vel == True:
                             _pos, _vel, _pid = _out[0], _out[1], _out[2]
@@ -251,7 +255,7 @@ class ReadGADGET:
                     i = MPI.mpi_ind2ind(mpi_ind)
                     if i is not None:
                         _out = self.readsnap(fnames[i], return_pos, return_vel, return_pid, part,
-                                             1, xmin, xmax, ymin, ymax, zmin, zmax)
+                                             1, xmin, xmax, ymin, ymax, zmin, zmax, suppress)
                         if return_pid == True:
                             if return_pos == True and return_vel == True:
                                 _pos, _vel, _pid = _out[0], _out[1], _out[2]

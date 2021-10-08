@@ -3,7 +3,7 @@ import pygadgetreader as pyg
 
 
 def readsnap(fname, return_pos=True, return_vel=True, return_pid=False, part='dm', single=0,
-             xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None):
+             xmin=None, xmax=None, ymin=None, ymax=None, zmin=None, zmax=None, suppress=1):
     """Reads snapshot file.
 
     Parameters
@@ -32,15 +32,15 @@ def readsnap(fname, return_pos=True, return_vel=True, return_pid=False, part='dm
         Minimum z-value.
     zmax : float, optional
         Maximum z-value.
-    usepara : bool, optional
-        Open files in parallel if more than one.
+    suppress : int, optional
+        Suppresses print statements from pygadgetreader.
     """
     if return_pos == True:
-        pos = pyg.readsnap(fname, 'pos', part, single=single)
+        pos = pyg.readsnap(fname, 'pos', part, single=single, suppress=suppress)
     if return_vel == True:
-        vel = pyg.readsnap(fname, 'vel', part, single=single)
+        vel = pyg.readsnap(fname, 'vel', part, single=single, suppress=suppress)
     if return_pid == True:
-        pid = pyg.readsnap(fname, 'pid', part, single=single)
+        pid = pyg.readsnap(fname, 'pid', part, single=single, suppress=suppress)
     if return_pos == True:
         mask = np.ones(len(pos))
         if xmin is not None:
